@@ -1,0 +1,4 @@
+hmac
+====
+
+Some HMAC experiments
