@@ -14,7 +14,7 @@ import           Text.Printf
 
 
 main :: IO ()
-main = sha256_test
+main = run_tests
 
 run_tests :: IO ()
 run_tests = mapM_ test test_vectors
@@ -32,105 +32,125 @@ simple_test :: IO ()
 simple_test = putStrLn $ sha1PBKDF2   "password" "salt" 4096  20
 
 sha256_test :: IO ()
-sha256_test = putStrLn $ sha256PBKDF2 "password" "salt" 10000 32
+sha256_test = putStrLn $ sha256PBKDF2 "password" "salt" 1000000 32
 
+sha1PBKDF1, sha256PBKDF1, sha512PBKDF1 :: String -> String -> Int -> String 
+sha1PBKDF1   pw_s na_s c = pbkdf1_ $ sha1PBKDF   pw_s na_s c 0
+sha256PBKDF1 pw_s na_s c = pbkdf1_ $ sha256PBKDF pw_s na_s c 0
+sha512PBKDF1 pw_s na_s c = pbkdf1_ $ sha512PBKDF pw_s na_s c 0
 
--- SHA-based pbkdf2 generators
+sha1PBKDF2, sha256PBKDF2, sha512PBKDF2 :: String -> String -> Int -> Int -> String
 
-sha1PBKDF2 :: String -> String -> Int -> Int -> String
-sha1PBKDF2 =
-    pbkdf2
+sha1PBKDF2   pw_s na_s c dkLen = pbkdf2_ $ sha1PBKDF   pw_s na_s c dkLen
+sha256PBKDF2 pw_s na_s c dkLen = pbkdf2_ $ sha256PBKDF pw_s na_s c dkLen
+sha512PBKDF2 pw_s na_s c dkLen = pbkdf2_ $ sha512PBKDF pw_s na_s c dkLen
+
+-- SHA-based pbkdf generators
+
+sha1PBKDF :: String -> String -> Int -> Int -> PBKDF
+sha1PBKDF =
+    pbkdf
         PRF
-            { prf_hash      = hmac sha1 64          -- 512-bit block
+            { prf_hmac      = hmac sha1 64          -- 512-bit block
+            , prf_hash      = sha1                  -- SHA-1
             , prf_hLen      = 20                    -- 160-bit hash
             } 
   where
     sha1 = toBytes . (CH.hash :: BS.ByteString -> CH.Digest CH.SHA1)
 
-sha256PBKDF2 :: String -> String -> Int -> Int -> String
-sha256PBKDF2 =
-    pbkdf2
+sha256PBKDF :: String -> String -> Int -> Int -> PBKDF
+sha256PBKDF =
+    pbkdf
         PRF
-            { prf_hash      = hmac sha256 64        -- 512-bit block
+            { prf_hmac      = hmac sha256 64        -- 512-bit block
+            , prf_hash      = sha256                -- SHA-256
             , prf_hLen      = 32                    -- 256-bit hash
             } 
   where
     sha256 = toBytes . (CH.hash :: BS.ByteString -> CH.Digest CH.SHA256)
 
-sha512PBKDF2 :: String -> String -> Int -> Int -> String
-sha512PBKDF2 =
-    pbkdf2
+sha512PBKDF :: String -> String -> Int -> Int -> PBKDF
+sha512PBKDF =
+    pbkdf
         PRF
-            { prf_hash      = hmac sha512 128       -- 1024-bit block
-            , prf_hLen      = 64                    --  512-bit hash
+            { prf_hmac      = hmac sha512 128       -- 1024-bit block
+            , prf_hash      = sha512                -- SHA-512
+            , prf_hLen      = 64                    -- 512-bit hash
             } 
   where
     sha512 = toBytes . (CH.hash :: BS.ByteString -> CH.Digest CH.SHA512)
 
--- pbkdf2: parametrized over the psuedo-random/HMAC function
+pbkdf :: PRF -> String -> String -> Int -> Int -> PBKDF
+pbkdf prf pw_s na_s c dkLen =
+    PBKDF
+        { pbkdf_PRF    = prf
+        , pbkdf_P      = BC.pack pw_s
+        , pbkdf_S      = BC.pack na_s
+        , pbkdf_c      = c
+        , pbkdf_dkLen  = dkLen
+        }
 
-pbkdf2 :: PRF -> String -> String -> Int -> Int -> String
-pbkdf2 prf pw_s na_s c dkLen =
-    pbkdf2_
-        PBKDF2
-            { pbkdf2_PRF    = prf
-            , pbkdf2_P      = BC.pack pw_s
-            , pbkdf2_S      = BC.pack na_s
-            , pbkdf2_c      = c
-            , pbkdf2_dkLen  = dkLen
-            }
+-- PBKDF parameters
 
-data PBKDF2
-    = PBKDF2
-        { pbkdf2_PRF    :: PRF              -- the psuedo-random (i.e., HMAC) function
-        , pbkdf2_P      :: BS.ByteString    -- the password (will be UTF-8 encoded)
-        , pbkdf2_S      :: BS.ByteString    -- the salt     (will be UTF-8 encoded)
-        , pbkdf2_c      :: Int              -- iteration count for applying the HMAC
-        , pbkdf2_dkLen  :: Int              -- the length of the o/p derived key 
+data PBKDF
+    = PBKDF
+        { pbkdf_PRF    :: PRF              -- the psuedo-random (i.e., HMAC) function
+        , pbkdf_P      :: BS.ByteString    -- the password (will be UTF-8 encoded)
+        , pbkdf_S      :: BS.ByteString    -- the salt     (will be UTF-8 encoded)
+        , pbkdf_c      :: Int              -- iteration count for applying the HMAC
+        , pbkdf_dkLen  :: Int              -- the length of the o/p derived key 
         }
 
 data PRF
     = PRF
-        { prf_hash      :: BS.ByteString -> BS.ByteString -> BS.ByteString  -- the HMAC function
+        { prf_hmac      :: BS.ByteString -> BS.ByteString -> BS.ByteString  -- the PR/HMAC function
+        , prf_hash      :: BS.ByteString -> BS.ByteString                   -- the underlying hash function
         , prf_hLen      :: Int                                              -- number of octets in o/p hash
         } 
 
+-- core PBKDF functions
 
--- pbkdf2_: core PBKDF2 function
-
-pbkdf2_ :: PBKDF2 -> String
-pbkdf2_ PBKDF2{..} =
-    dumpRaw $ take pbkdf2_dkLen $ BS.unpack $ BS.concat $ map f $ zip zbs ivs
+pbkdf1_ :: PBKDF -> String
+pbkdf1_ PBKDF{..} = dumpRaw $ BS.unpack $ iterate_n pbkdf_c prf_hash $ pbkdf_P `BS.append` pbkdf_S
   where
-    f (zb,iv)   = snd $ b_i zb $ pbkdf2_S `BS.append` iv
+    PRF{..} = pbkdf_PRF
 
-    b_i zb msg  = iterateK pbkdf2_c g (msg,zb)
+pbkdf2_ :: PBKDF -> String
+pbkdf2_ PBKDF{..} =
+    dumpRaw $ take pbkdf_dkLen $ BS.unpack $ BS.concat $ map f $ zip zbs ivs
+  where
+    f (zb,iv)   = snd $ b_i zb $ pbkdf_S `BS.append` iv
+
+    b_i zb msg  = iterate_n pbkdf_c g (msg,zb)
 
     g (!u,!p)   = (u',BS.pack $ BS.zipWith xor p u')
       where
-        u' = prf_hash pbkdf2_P u
+        u' = prf_hmac pbkdf_P u
 
-    r           = pbkdf2_dkLen - (l - 1) * prf_hLen
+    r           = pbkdf_dkLen - (l - 1) * prf_hLen
 
-    l           = ceiling $ (fromIntegral pbkdf2_dkLen :: Double) / fromIntegral prf_hLen
+    l           = ceiling $ (fromIntegral pbkdf_dkLen :: Double) / fromIntegral prf_hLen
     
     zbs         = replicate l (mk_zb prf_hLen) ++ [mk_zb r]
     
     mk_zb sz    = BS.pack $ replicate sz 0
 
-    PRF{..}     = pbkdf2_PRF
+    PRF{..}     = pbkdf_PRF
+
+-- ivs (helper) : PBKDF2 IVs
 
 ivs :: [BS.ByteString]
 ivs = [ BS.pack $ drop (length a - 4) a | i<-bnos, let a = BLC.unpack $ B.encode i ]
   where
     bnos = [1..] :: [Int]
 
-iterateK :: Int -> (a->a) -> a -> a
-iterateK !i f !x =
+-- iterate a function over an argument k times
+
+iterate_n :: Int -> (a->a) -> a -> a
+iterate_n !i f !x =
     case i of
       0 -> x
-      _ -> iterateK (i-1) f $ f x
-
+      _ -> iterate_n (i-1) f $ f x
 
 -- RFC6070 test vectors
 
