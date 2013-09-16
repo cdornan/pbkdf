@@ -124,9 +124,8 @@ pbkdf2_ PBKDF{..} = BS.take pbkdf_dkLen $ BS.concat $ map f $ zip zbs ivs
 
     PRF{..}     = pbkdf_PRF
 
-    ivs = [ BS.pack $ drop (length os - 4) os | bno<-bnos, let os = BLC.unpack $ B.encode bno ]
-      where
-        bnos = [1..] :: [Int]
+    ivs         = [ BS.pack $ drop (length os - 4) os | bno<-[1..] :: [Int], 
+                                            let os = BLC.unpack $ B.encode bno ]
 
 -- iterate a function over an argument k times
 
