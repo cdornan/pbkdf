@@ -28,7 +28,7 @@ Library
         Crypto.PBKDF.Core
 
     Build-depends:
-        base                >= 4.5                  ,
+        base                >= 4.5   && < 5.0       ,
         binary              >= 0.5                  ,
         byteable            >= 0.1                  ,
         bytedump            >= 1.0                  ,
