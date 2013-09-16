@@ -5,3 +5,8 @@ cabal-dev
 *.chi
 *.chs.h
 .virthualenv
+pbkdf
+py
+hmac-trash
+.hub
+.project
