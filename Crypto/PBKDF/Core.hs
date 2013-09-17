@@ -8,8 +8,8 @@ module Crypto.PBKDF.Core
     , pbkdf
     , PBKDF(..)
     , PRF(..)
-    , pbkdf1_
-    , pbkdf2_
+    , pbkdf1
+    , pbkdf2
     ) where
 
 import qualified Data.Binary                    as B
@@ -96,15 +96,15 @@ data PRF
 
 -- | the pbkdf1_ core function
 
-pbkdf1_ :: PBKDF -> BS.ByteString
-pbkdf1_ PBKDF{..} = iterate_n pbkdf_c prf_hash $ pbkdf_P `BS.append` pbkdf_S
+pbkdf1 :: PBKDF -> BS.ByteString
+pbkdf1 PBKDF{..} = iterate_n pbkdf_c prf_hash $ pbkdf_P `BS.append` pbkdf_S
   where
     PRF{..} = pbkdf_PRF
 
 -- | the pbkdf2_ core function
 
-pbkdf2_ :: PBKDF -> BS.ByteString
-pbkdf2_ PBKDF{..} = BS.take pbkdf_dkLen $ BS.concat $ map f $ zip zbs ivs
+pbkdf2 :: PBKDF -> BS.ByteString
+pbkdf2 PBKDF{..} = BS.take pbkdf_dkLen $ BS.concat $ map f $ zip zbs ivs
   where
     f (zb,iv)   = snd $ itr zb $ pbkdf_S `BS.append` iv
 
