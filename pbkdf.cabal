@@ -3,6 +3,7 @@ Version:             1.1.1.0
 Synopsis:            Haskell implementation of the PBKDF functions from RFC-2898.
 Description:         The Password Based Key Derivation Functions described in RFC-2898 with a test suite to verify that it works with the test vectors published in RFC6070.
 Homepage:            https://github.com/cdornan/pbkdf
+Bug-reports:         https://github.com/cdornan/pbkdf/issues
 License:             BSD3
 License-file:        LICENSE
 Author:              Chris Dornan
@@ -10,13 +11,12 @@ Maintainer:          chris.dornan@irisconnect.com
 Copyright:           (C) Chris Dornan
 Category:            Cryptography
 Build-type:          Simple
-
 Cabal-version:       >=1.14
 
 Source-repository this
     type:           git
     location:       https://github.com/cdornan/pbkdf.git
-    tag:            1.1.0.1
+    tag:            1.1.1.0
 
 Source-repository head
     type:           git
