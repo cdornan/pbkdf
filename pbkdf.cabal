@@ -1,5 +1,5 @@
 Name:                pbkdf
-Version:             1.1.0.1
+Version:             1.1.1.0
 Synopsis:            Haskell implementation of the PBKDF functions from RFC-2898.
 Description:         The Password Based Key Derivation Functions described in RFC-2898 with a test suite to verify that it works with the test vectors published in RFC6070.
 Homepage:            https://github.com/cdornan/pbkdf
@@ -25,6 +25,7 @@ Source-repository head
 Library
     Exposed-modules:
         Crypto.PBKDF
+        Crypto.PBKDF.ByteString
         Crypto.PBKDF.Core
 
     Build-depends:
