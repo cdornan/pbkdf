@@ -35,10 +35,7 @@ import qualified Data.ByteString            as BS
 -- This module provides stock implementations of the PBKDF functions from
 -- RFC-2898 (<http://www.ietf.org/rfc/rfc2898.txt>), based on the SHA-1,
 -- SHA-256 and SHA-256 hash functions. Each function takes the password and
--- salt as a string and returns a hex string. To work with ByteStrings
--- and provide your own hash function use the 'Crypto.PBKDF.Core.pbkdf1'
--- and 'Crypto.PBKDF.Core.pbkdf2' functions on which these functions are
--- based.
+-- salt as a ByteString and returns the Hash as a ByteString.
 
 
 sha1PBKDF1, sha256PBKDF1, sha512PBKDF1 

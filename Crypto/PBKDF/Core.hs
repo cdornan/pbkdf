@@ -9,7 +9,6 @@ module Crypto.PBKDF.Core
     , sha512PBKDF
     , sha512PBKDF'
     , pbkdf
-    , pbkdf'
     , PBKDF(..)
     , PRF(..)
     , pbkdf1
@@ -26,16 +25,16 @@ import           Crypto.MAC.HMAC
 import           Data.Byteable
 
 
--- | SHA-1 generator (String edition)
+-- | make a SHA-1 parameter blocks (String edition)
 
 sha1PBKDF :: String -> String -> Int -> Int -> PBKDF
 sha1PBKDF pw na = sha1PBKDF' (BU.fromString pw) (BU.fromString na)
 
--- | SHA-1 generator (ByteString edition)
+-- | make a SHA-1 parameter blocks (ByteString edition)
 
 sha1PBKDF' :: BS.ByteString -> BS.ByteString -> Int -> Int -> PBKDF
 sha1PBKDF' =
-    pbkdf'
+    PBKDF
         PRF
             { prf_hmac      = hmac sha1 64          -- 512-bit block
             , prf_hash      = sha1                  -- SHA-1
@@ -44,16 +43,16 @@ sha1PBKDF' =
   where
     sha1 = toBytes . (CH.hash :: BS.ByteString -> CH.Digest CH.SHA1)
 
--- | SHA-256 generator (String edition)
+-- | make a SHA-256 parameter blocks (String edition)
 
 sha256PBKDF :: String -> String -> Int -> Int -> PBKDF
 sha256PBKDF pw na = sha256PBKDF' (BU.fromString pw) (BU.fromString na)
 
--- | SHA-256 generator (ByteString edition)
+-- | make a SHA-256 parameter blocks (ByteString edition)
 
 sha256PBKDF' :: BS.ByteString -> BS.ByteString -> Int -> Int -> PBKDF
 sha256PBKDF' =
-    pbkdf'
+    PBKDF
         PRF
             { prf_hmac      = hmac sha256 64        -- 512-bit block
             , prf_hash      = sha256                -- SHA-256
@@ -62,16 +61,16 @@ sha256PBKDF' =
   where
     sha256 = toBytes . (CH.hash :: BS.ByteString -> CH.Digest CH.SHA256)
 
--- | SHA-512 generator (String edition)
+-- | make a SHA-512 parameter blocks (String edition)
 
 sha512PBKDF :: String -> String -> Int -> Int -> PBKDF
 sha512PBKDF pw na = sha512PBKDF' (BU.fromString pw) (BU.fromString na)
 
--- | SHA-512 generator
+-- | make a SHA-512 parameter blocks (ByteString edition)
 
 sha512PBKDF' :: BS.ByteString -> BS.ByteString -> Int -> Int -> PBKDF
 sha512PBKDF' =
-    pbkdf'
+    PBKDF
         PRF
             { prf_hmac      = hmac sha512 128       -- 1024-bit block
             , prf_hash      = sha512                -- SHA-512
@@ -80,25 +79,13 @@ sha512PBKDF' =
   where
     sha512 = toBytes . (CH.hash :: BS.ByteString -> CH.Digest CH.SHA512)
 
--- | construct a PBKDF generator from a HMAC function
+-- | construct a PBKDF parameter block for the key generators (String edition)
 
 pbkdf :: PRF -> String -> String -> Int -> Int -> PBKDF
 pbkdf prf pw_s na_s c dkLen =
-                    pbkdf' prf (BU.fromString pw_s) (BU.fromString na_s) c dkLen
+                    PBKDF prf (BU.fromString pw_s) (BU.fromString na_s) c dkLen
 
--- | construct a PBKDF generator from a HMAC function
-
-pbkdf' :: PRF -> BS.ByteString -> BS.ByteString -> Int -> Int -> PBKDF
-pbkdf' prf pw na c dkLen =
-    PBKDF
-        { pbkdf_PRF    = prf
-        , pbkdf_P      = pw
-        , pbkdf_S      = na
-        , pbkdf_c      = c
-        , pbkdf_dkLen  = dkLen
-        }
-
--- | PBKDF generator parameters
+-- | the parameter block for the key generators
 
 data PBKDF
     = PBKDF
@@ -109,7 +96,8 @@ data PBKDF
         , pbkdf_dkLen  :: Int              -- ^ the length of the o/p derived key 
         }
 
--- | the HMAC function and its underlying HASH function
+-- | contains the HMAC function and its underlying HASH function, along with
+-- the size of the hashes it generates
 
 data PRF
     = PRF
@@ -119,14 +107,14 @@ data PRF
         } 
 
 
--- | the pbkdf1_ core function
+-- | the pbkdf1 key derivation function
 
 pbkdf1 :: PBKDF -> BS.ByteString
 pbkdf1 PBKDF{..} = iterate_n pbkdf_c prf_hash $ pbkdf_P `BS.append` pbkdf_S
   where
     PRF{..} = pbkdf_PRF
 
--- | the pbkdf2_ core function
+-- | the pbkdf2 key derivation function
 
 pbkdf2 :: PBKDF -> BS.ByteString
 pbkdf2 PBKDF{..} = BS.take pbkdf_dkLen $ BS.concat $ map f $ zip zbs ivs
